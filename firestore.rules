@@ -10,7 +10,7 @@ service cloud.firestore {
 
     function isAdmin() {
       return request.auth != null &&
-        request.auth.token.email == "ADMIN_EMAIL_PLACEHOLDER";
+        request.auth.token.email == "temidayosodiq02@gmail.com";
     }
 
     match /products/{productId} {
