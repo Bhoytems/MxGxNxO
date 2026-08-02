@@ -1,8 +1,0 @@
-node_modules
-.next
-out
-.env
-.env.local
-firebase-debug.log
-.firebase
-*.log
