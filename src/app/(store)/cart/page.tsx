@@ -5,6 +5,8 @@ import Link from "next/link";
 import { useState } from "react";
 import { useCart } from "@/contexts/CartContext";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { formatPrice } from "@/lib/utils";
 import { Minus, Plus, Trash2, Loader2, ShoppingBag } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
@@ -13,13 +15,27 @@ export default function CartPage() {
   const { items, updateQuantity, removeItem, subtotal } = useCart();
   const [checkingOut, setCheckingOut] = useState(false);
 
+  // Paystack needs an email and we handle physical shipping ourselves as
+  // dropshippers, so both are collected here rather than mid-checkout.
+  const [email, setEmail] = useState("");
+  const [address, setAddress] = useState({ line1: "", city: "", state: "", country: "", postal_code: "" });
+
   async function handleCheckout() {
+    if (!email || !/^\S+@\S+\.\S+$/.test(email)) {
+      toast({ title: "Enter a valid email", variant: "destructive" });
+      return;
+    }
+    if (!address.line1 || !address.city || !address.country) {
+      toast({ title: "Enter your shipping address", description: "Address, city, and country are required.", variant: "destructive" });
+      return;
+    }
+
     setCheckingOut(true);
     try {
       const res = await fetch("/api/create-checkout-session", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ items }),
+        body: JSON.stringify({ items, email, shippingAddress: address }),
       });
       const data = await res.json();
       if (!res.ok || !data.url) throw new Error(data.error || "Couldn't start checkout.");
@@ -91,6 +107,36 @@ export default function CartPage() {
             </div>
           ))}
         </div>
+
+        <div className="mt-8 rounded-lg border border-gray-200 p-6">
+          <h2 className="font-display font-semibold text-gray-900">Shipping details</h2>
+          <div className="mt-4 grid gap-4 sm:grid-cols-2">
+            <div className="space-y-1.5 sm:col-span-2">
+              <Label htmlFor="email">Email</Label>
+              <Input id="email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} required />
+            </div>
+            <div className="space-y-1.5 sm:col-span-2">
+              <Label htmlFor="line1">Address</Label>
+              <Input id="line1" value={address.line1} onChange={(e) => setAddress({ ...address, line1: e.target.value })} required />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="city">City</Label>
+              <Input id="city" value={address.city} onChange={(e) => setAddress({ ...address, city: e.target.value })} required />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="state">State / Province</Label>
+              <Input id="state" value={address.state} onChange={(e) => setAddress({ ...address, state: e.target.value })} />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="country">Country</Label>
+              <Input id="country" value={address.country} onChange={(e) => setAddress({ ...address, country: e.target.value })} required />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="postal">Postal code</Label>
+              <Input id="postal" value={address.postal_code} onChange={(e) => setAddress({ ...address, postal_code: e.target.value })} />
+            </div>
+          </div>
+        </div>
       </div>
 
       <div className="h-fit rounded-lg border border-gray-200 p-6">
@@ -99,9 +145,9 @@ export default function CartPage() {
           <span>Subtotal</span>
           <span>{formatPrice(subtotal)}</span>
         </div>
-        <p className="mt-1 text-xs text-gray-400">Shipping & taxes calculated at checkout.</p>
+        <p className="mt-1 text-xs text-gray-400">Shipping is included in each product's price.</p>
         <Button size="lg" className="mt-6 w-full" onClick={handleCheckout} disabled={checkingOut}>
-          {checkingOut ? <Loader2 className="h-4 w-4 animate-spin" /> : "Checkout"}
+          {checkingOut ? <Loader2 className="h-4 w-4 animate-spin" /> : "Checkout with Paystack"}
         </Button>
       </div>
     </div>
