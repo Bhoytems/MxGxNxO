@@ -7,8 +7,14 @@ export function cn(...inputs: ClassValue[]) {
 }
 
 // Formats a number of cents (or a plain dollar float) as USD currency for display.
+// The store's base currency. Paystack settles in NGN by default; if you enable
+// additional settlement currencies in your Paystack dashboard, set this to
+// match (e.g. "USD", "GHS", "ZAR", "KES") so displayed prices line up with
+// what Paystack actually charges.
+const CURRENCY = process.env.NEXT_PUBLIC_CURRENCY || "NGN";
+
 export function formatPrice(amount: number) {
-  return new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" }).format(amount);
+  return new Intl.NumberFormat("en-NG", { style: "currency", currency: CURRENCY }).format(amount);
 }
 
 export function slugify(input: string) {

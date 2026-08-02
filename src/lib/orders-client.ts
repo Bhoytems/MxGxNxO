@@ -1,17 +1,33 @@
-// Client-side Firestore reads for "orders". Rules restrict reads to the admin;
-// orders are only ever written by the Stripe webhook via the Admin SDK.
-import { collection, getDocs, doc, updateDoc, orderBy, query } from "firebase/firestore";
-import { db } from "@/lib/firebase";
+// Supabase reads for "orders". RLS restricts reads/updates to the admin;
+// orders are only ever INSERTed by the Paystack webhook using the service
+// role key (which bypasses RLS).
+import { supabase } from "@/lib/supabase";
 import { Order, OrderStatus } from "@/types";
 
-const ordersRef = collection(db, "orders");
+function fromRow(row: any): Order {
+  return {
+    id: row.id,
+    paystackReference: row.paystack_reference,
+    customerEmail: row.customer_email,
+    customerName: row.customer_name,
+    shippingAddress: row.shipping_address,
+    items: row.items || [],
+    total: Number(row.total),
+    status: row.status,
+    createdAt: new Date(row.created_at).getTime(),
+  };
+}
 
 export async function getOrders(): Promise<Order[]> {
-  const q = query(ordersRef, orderBy("createdAt", "desc"));
-  const snap = await getDocs(q);
-  return snap.docs.map((d) => ({ id: d.id, ...d.data() } as Order));
+  const { data, error } = await supabase
+    .from("orders")
+    .select("*")
+    .order("created_at", { ascending: false });
+  if (error) throw error;
+  return (data || []).map(fromRow);
 }
 
 export async function setOrderStatus(id: string, status: OrderStatus) {
-  await updateDoc(doc(db, "orders", id), { status });
+  const { error } = await supabase.from("orders").update({ status }).eq("id", id);
+  if (error) throw error;
 }
