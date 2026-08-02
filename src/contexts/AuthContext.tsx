@@ -1,16 +1,11 @@
 "use client";
 
-// Provides the current Firebase Auth user app-wide, and exposes sign-in/out helpers.
-// Only ADMIN_EMAIL is treated as an admin — everyone else is a normal (unauthenticated
-// for our purposes) storefront visitor.
+// Provides the current Supabase Auth user app-wide, and exposes sign-in/out
+// helpers. Only ADMIN_EMAIL is treated as an admin — everyone else is a
+// normal (unauthenticated for our purposes) storefront visitor.
 import { createContext, useContext, useEffect, useState, ReactNode } from "react";
-import {
-  onAuthStateChanged,
-  signInWithEmailAndPassword,
-  signOut as firebaseSignOut,
-  User,
-} from "firebase/auth";
-import { auth, ADMIN_EMAIL } from "@/lib/firebase";
+import type { User } from "@supabase/supabase-js";
+import { supabase, ADMIN_EMAIL } from "@/lib/supabase";
 
 interface AuthContextValue {
   user: User | null;
@@ -27,21 +22,28 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const unsub = onAuthStateChanged(auth, (u) => {
-      setUser(u);
+    supabase.auth.getSession().then(({ data }) => {
+      setUser(data.session?.user ?? null);
       setLoading(false);
     });
-    return unsub;
+
+    const { data: listener } = supabase.auth.onAuthStateChange((_event, session) => {
+      setUser(session?.user ?? null);
+      setLoading(false);
+    });
+
+    return () => listener.subscription.unsubscribe();
   }, []);
 
   const isAdmin = !!user && !!ADMIN_EMAIL && user.email === ADMIN_EMAIL;
 
   async function signIn(email: string, password: string) {
-    await signInWithEmailAndPassword(auth, email, password);
+    const { error } = await supabase.auth.signInWithPassword({ email, password });
+    if (error) throw error;
   }
 
   async function signOut() {
-    await firebaseSignOut(auth);
+    await supabase.auth.signOut();
   }
 
   return (
