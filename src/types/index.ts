@@ -47,7 +47,7 @@ export interface OrderItem {
 
 export interface Order {
   id: string;
-  stripeSessionId: string;
+  paystackReference: string;
   customerEmail: string;
   customerName?: string;
   shippingAddress?: {
@@ -59,7 +59,7 @@ export interface Order {
     country?: string;
   };
   items: OrderItem[];
-  total: number; // in USD
+  total: number; // in the store's base currency (see NEXT_PUBLIC_CURRENCY)
   status: OrderStatus;
   createdAt: number;
 }
